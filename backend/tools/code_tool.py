@@ -13,12 +13,13 @@ def _get_llm():
 
 
 @tool
-def code_generator(topic: str, level: str = "beginner") -> str:
+def code_generator(topic: str, level: str = "beginner", student_context: str = "") -> str:
     """Generate educational code examples for a programming topic.
 
     Args:
         topic: The programming topic to generate code for (e.g. 'FastAPI CRUD', 'React useState')
         level: Student level - beginner, intermediate, or advanced
+        student_context: Summary of student profile, known technologies, and studied topics
     """
     level_instructions = {
         "beginner": (
@@ -36,8 +37,10 @@ def code_generator(topic: str, level: str = "beginner") -> str:
     }
     instruction = level_instructions.get(level, level_instructions["beginner"])
 
-    prompt = f"""Generate an educational code example for "{topic}" for a {level} level student.
+    context_section = f"\nStudent Profile:\n{student_context}\nUse their known technologies as analogies where helpful. Don't re-explain concepts they've already studied.\n" if student_context else ""
 
+    prompt = f"""Generate an educational code example for "{topic}" for a {level} level student.
+{context_section}
 Instructions: {instruction}
 
 Structure your response as:

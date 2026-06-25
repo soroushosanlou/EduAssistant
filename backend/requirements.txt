@@ -2,5 +2,6 @@ langchain
 langchain-openai
 langchain-community
 langgraph
+langgraph-checkpoint-sqlite
 python-dotenv
 requests

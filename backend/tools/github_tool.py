@@ -40,12 +40,13 @@ def _fetch_github_content(repo_url: str) -> dict:
 
 
 @tool
-def github_reviewer(repo_url: str, level: str = "beginner") -> str:
+def github_reviewer(repo_url: str, level: str = "beginner", student_context: str = "") -> str:
     """Review a GitHub repository and provide educational feedback.
 
     Args:
         repo_url: Full GitHub repository URL (e.g. https://github.com/username/project)
         level: Student level - beginner, intermediate, or advanced
+        student_context: Summary of student profile, known technologies, and learning path
     """
     try:
         data = _fetch_github_content(repo_url)
@@ -62,7 +63,10 @@ def github_reviewer(repo_url: str, level: str = "beginner") -> str:
     }
     instruction = level_instructions.get(level, level_instructions["beginner"])
 
+    context_section = f"\nStudent Profile:\n{student_context}\nTailor feedback to their known technologies and learning path.\n" if student_context else ""
+
     prompt = f"""Review this GitHub repository for a {level} level student.
+{context_section}
 
 Repository: {data['owner']}/{data['repo']}
 

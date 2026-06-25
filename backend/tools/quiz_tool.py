@@ -14,12 +14,13 @@ def _get_llm():
 
 
 @tool
-def quiz_generator(topic: str, level: str = "beginner") -> str:
+def quiz_generator(topic: str, level: str = "beginner", student_context: str = "") -> str:
     """Generate an interactive 5-question quiz based on topic and student level.
 
     Args:
         topic: The programming topic for the quiz (e.g. 'React Hooks', 'FastAPI')
         level: Student level - beginner, intermediate, or advanced
+        student_context: Summary of student profile and previously studied topics
     """
     level_instructions = {
         "beginner": "Use simple language. Focus on basic concepts and definitions.",
@@ -28,8 +29,10 @@ def quiz_generator(topic: str, level: str = "beginner") -> str:
     }
     instruction = level_instructions.get(level, level_instructions["beginner"])
 
-    prompt = f"""Create a 5-question multiple-choice quiz about "{topic}" for a {level} level student.
+    context_section = f"\nStudent Profile:\n{student_context}\nAvoid repeating topics already studied. Build on existing knowledge.\n" if student_context else ""
 
+    prompt = f"""Create a 5-question multiple-choice quiz about "{topic}" for a {level} level student.
+{context_section}
 Instructions: {instruction}
 
 Return ONLY a valid JSON array with this exact structure (no extra text):

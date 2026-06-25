@@ -1,7 +1,10 @@
 import os
 import dotenv
 from langchain_openai import ChatOpenAI
-from langgraph.checkpoint.memory import MemorySaver
+try:
+    from langgraph.checkpoint.memory import InMemorySaver as _Checkpointer
+except ImportError:
+    from langgraph.checkpoint.memory import MemorySaver as _Checkpointer
 from langchain.agents import create_agent
 from tools import quiz_generator, code_generator, github_reviewer, roadmap_generator, youtube_search
 from middlewares import apply_student_level, ContextManager, apply_summary_middleware
@@ -21,7 +24,11 @@ You have access to these tools — always use them when appropriate:
 - roadmap_generator: Create personalized learning roadmaps
 - youtube_search: Search YouTube for educational tutorial videos on a topic
 
-Always pass the student's level to the tools you use.
+IMPORTANT: When calling any tool, always pass:
+1. The student's current `level`
+2. The `student_context` field using the EXACT text from the "Student Profile" section above
+
+This ensures tools build on what the student already knows and avoid repeating covered topics.
 Respond in the same language the student uses (Persian or English).
 
 CRITICAL RULE: If a tool returns output that starts with "QUIZ_JSON:", you MUST return that exact string as your entire response — do NOT paraphrase, summarize, or add any text before or after it.
@@ -44,10 +51,11 @@ class EducationalAgent:
             base_url="https://api.metisai.ir/openai/v1",
             api_key=os.getenv("OPENAI_API_KEY"),
         )
+        checkpointer = _Checkpointer()
         return create_agent(
             model=llm,
             tools=tools,
-            checkpointer=MemorySaver(),
+            checkpointer=checkpointer,
         )
 
     def _build_system_prompt(self) -> str:
@@ -98,11 +106,15 @@ class EducationalAgent:
                     response = content
                     break
 
-        # Track studied topics from tool usage
-        for keyword in ["quiz", "roadmap", "code", "review"]:
-            if keyword in user_message.lower():
-                topic = user_message.replace(keyword, "").strip()
-                self.context_manager.add_studied_topic(topic[:50])
+        # Track studied topics from actual tool calls (not keyword guessing)
+        for msg in result["messages"]:
+            tool_name = getattr(msg, "name", None)
+            if tool_name in ("quiz_generator", "code_generator", "roadmap_generator", "github_reviewer"):
+                # Extract the topic argument from the tool call inputs
+                tool_input = getattr(msg, "additional_kwargs", {})
+                topic = tool_input.get("topic") or tool_input.get("goal") or tool_input.get("repo_url", "")
+                if topic:
+                    self.context_manager.add_studied_topic(str(topic)[:60])
 
         self.messages_history.append({"role": "assistant", "content": response})
         return response

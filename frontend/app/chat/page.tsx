@@ -4,6 +4,17 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import QuizPlayer from "../components/QuizPlayer";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const LEVELS = ["beginner", "intermediate", "advanced"] as const;
 type Level = (typeof LEVELS)[number];
@@ -20,7 +31,17 @@ interface Context {
   studied_topics: string[];
 }
 
-const THREAD_ID = "session-" + Math.random().toString(36).slice(2);
+function getThreadId(): string {
+  const key = "edu_thread_id";
+  let id = typeof window !== "undefined" ? localStorage.getItem(key) : null;
+  if (!id) {
+    id = "session-" + Math.random().toString(36).slice(2);
+    if (typeof window !== "undefined") localStorage.setItem(key, id);
+  }
+  return id;
+}
+
+const THREAD_ID = getThreadId();
 
 const QUICK_ACTIONS = [
   {
@@ -66,7 +87,10 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [level, setLevel] = useState<Level>("beginner");
+  const [level, setLevel] = useState<Level>(() => {
+    if (typeof window === "undefined") return "beginner";
+    return (localStorage.getItem("edu_level") as Level) ?? "beginner";
+  });
   const [context, setContext] = useState<Context | null>(null);
   const [activeAction, setActiveAction] = useState<QuickAction | null>(null);
   const [customTopic, setCustomTopic] = useState("");
@@ -118,20 +142,28 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-950 text-white overflow-hidden">
+    <div className="flex h-screen bg-background text-foreground">
       {/* Sidebar */}
-      <aside className="w-60 bg-gray-900 border-r border-gray-800 p-4 flex flex-col gap-5 shrink-0">
-        <div>
-          <Link href="/" className="text-base font-bold text-purple-400 hover:text-purple-300 transition-colors">🎓 EduAssistant</Link>
-          <p className="text-xs text-gray-500 mt-0.5">Programming Learning Assistant</p>
+      <aside style={{width:240,background:"#18181b",padding:12,display:"flex",flexDirection:"column",gap:8,flexShrink:0,boxShadow:"4px 0 24px 0 rgba(0,0,0,0.22)",zIndex:1}}>
+
+        {/* Brand */}
+        <div style={{background:"#27272a",border:"1px solid #3f3f46",borderRadius:12,padding:"12px 14px"}}>
+          <Link href="/" style={{fontSize:13,fontWeight:700,color:"#fff",textDecoration:"none"}}>
+            🎓 EduAssistant
+          </Link>
+          <p style={{fontSize:11,color:"#fff",marginTop:2}}>Programming Learning Assistant</p>
         </div>
 
-        <div>
-          <label className="text-xs text-gray-400 mb-1 block uppercase tracking-wide">Level</label>
+        {/* Level */}
+        <div style={{background:"#27272a",border:"1px solid #3f3f46",borderRadius:12,padding:"12px 14px"}}>
+          <p style={{fontSize:10,color:"#fff",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:8}}>Level</p>
           <select
             value={level}
-            onChange={(e) => setLevel(e.target.value as Level)}
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500"
+            onChange={(e) => {
+              setLevel(e.target.value as Level);
+              localStorage.setItem("edu_level", e.target.value);
+            }}
+            style={{width:"100%",background:"#18181b",border:"1px solid #3f3f46",borderRadius:8,padding:"6px 10px",fontSize:13,color:"#fff",outline:"none",cursor:"pointer"}}
           >
             {LEVELS.map((l) => (
               <option key={l} value={l}>{l.charAt(0).toUpperCase() + l.slice(1)}</option>
@@ -139,19 +171,19 @@ export default function Home() {
           </select>
         </div>
 
-        {/* Quick actions */}
-        <div>
-          <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Quick Actions</p>
-          <div className="flex flex-col gap-1">
+        {/* Quick Actions */}
+        <div style={{background:"#27272a",border:"1px solid #3f3f46",borderRadius:12,padding:"12px 14px"}}>
+          <p style={{fontSize:10,color:"#fff",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:8}}>Quick Actions</p>
+          <div style={{display:"flex",flexDirection:"column",gap:2}}>
             {QUICK_ACTIONS.map((a) => (
               <button
                 key={a.label}
                 onClick={() => setActiveAction(activeAction?.label === a.label ? null : a)}
-                className={`text-left text-xs px-2 py-1.5 rounded-lg transition-colors ${
-                  activeAction?.label === a.label
-                    ? "bg-purple-800 text-purple-200"
-                    : "text-gray-400 hover:text-purple-300 hover:bg-gray-800"
-                }`}
+                style={{
+                  textAlign:"left",fontSize:13,padding:"7px 8px",borderRadius:8,border:"none",cursor:"pointer",transition:"background 0.15s",
+                  background: activeAction?.label === a.label ? "#3f3f46" : "transparent",
+                  color: activeAction?.label === a.label ? "#fff" : "#a1a1aa",
+                }}
               >
                 {a.label}
               </button>
@@ -159,34 +191,35 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Detected Profile */}
         {context && (
-          <div className="text-xs space-y-3 border-t border-gray-800 pt-4">
-            <p className="text-gray-400 font-medium uppercase tracking-wide">Detected Profile</p>
-            <div className="space-y-1.5">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Level</span>
-                <span className="text-green-400 font-medium">{context.level}</span>
+          <div style={{background:"#27272a",border:"1px solid #3f3f46",borderRadius:12,padding:"12px 14px",fontSize:11,display:"flex",flexDirection:"column",gap:8}}>
+            <p style={{color:"#71717a",textTransform:"uppercase",letterSpacing:"0.05em"}}>Detected Profile</p>
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              <div style={{display:"flex",justifyContent:"space-between"}}>
+                <span style={{color:"#fff"}}>Level</span>
+                <span style={{color:"#4ade80",fontWeight:500}}>{context.level}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Path</span>
-                <span className="text-gray-300 text-right max-w-[100px] truncate">{context.learning_path}</span>
+              <div style={{display:"flex",justifyContent:"space-between"}}>
+                <span style={{color:"#fff"}}>Path</span>
+                <span style={{color:"#d4d4d8",maxWidth:100,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{context.learning_path}</span>
               </div>
             </div>
             {context.technologies.length > 0 && (
               <div>
-                <p className="text-gray-500 mb-1">Technologies</p>
-                <div className="flex flex-wrap gap-1">
+                <p style={{color:"#fff",marginBottom:6}}>Technologies</p>
+                <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
                   {context.technologies.map((t) => (
-                    <span key={t} className="bg-purple-900/60 text-purple-300 px-2 py-0.5 rounded-full text-xs">{t}</span>
+                    <span key={t} style={{background:"#3f3f46",border:"1px solid #52525b",color:"#d4d4d8",padding:"2px 8px",borderRadius:6,fontSize:10}}>{t}</span>
                   ))}
                 </div>
               </div>
             )}
             {context.studied_topics.length > 0 && (
               <div>
-                <p className="text-gray-500 mb-1">Studied</p>
+                <p style={{color:"#fff",marginBottom:4}}>Studied</p>
                 {context.studied_topics.map((t) => (
-                  <p key={t} className="text-gray-400 truncate">• {t}</p>
+                  <p key={t} style={{color:"#a1a1aa",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>• {t}</p>
                 ))}
               </div>
             )}
@@ -197,126 +230,144 @@ export default function Home() {
       {/* Chat area */}
       <main className="flex-1 flex flex-col min-w-0">
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
+        <ScrollArea className="flex-1 px-6 py-6">
           {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full text-center">
+            <div className="flex flex-col items-center justify-center h-[60vh] text-center">
               <p className="text-5xl mb-4">🎓</p>
-              <p className="text-xl font-medium text-gray-300">What would you like to learn?</p>
-              <p className="text-sm text-gray-600 mt-1">Quiz • Code • Roadmap • GitHub Review • YouTube</p>
+              <p className="text-xl font-medium text-foreground">What would you like to learn?</p>
+              <p className="text-sm text-muted-foreground mt-1">Quiz • Code • Roadmap • GitHub Review • YouTube</p>
             </div>
           )}
 
-          {messages.map((msg, i) => (
-            <div key={i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              {msg.role === "assistant" && (
-                <div className="w-7 h-7 rounded-full bg-purple-700 flex items-center justify-center text-xs shrink-0 mt-1">AI</div>
-              )}
-              <div
-                className={`max-w-2xl px-4 py-3 rounded-2xl text-sm ${
-                  msg.role === "user"
-                    ? "bg-purple-600 text-white rounded-tr-sm"
-                    : "bg-gray-800 text-gray-100 rounded-tl-sm"
-                }`}
-              >
-                {msg.role === "assistant" ? (
-                  msg.content.startsWith("QUIZ_JSON:") ? (
-                    <QuizPlayer questions={JSON.parse(msg.content.replace("QUIZ_JSON:", ""))} />
+          <div className="space-y-4">
+            {messages.map((msg, i) => (
+              <div key={i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                {msg.role === "assistant" && (
+                  <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-xs text-primary-foreground shrink-0 mt-1">
+                    AI
+                  </div>
+                )}
+                <div
+                  className={`max-w-2xl px-4 py-3 rounded-2xl text-sm ${
+                    msg.role === "user"
+                      ? "bg-primary text-primary-foreground rounded-tr-sm"
+                      : "bg-secondary text-secondary-foreground rounded-tl-sm"
+                  }`}
+                >
+                  {msg.role === "assistant" ? (
+                    msg.content.startsWith("QUIZ_JSON:") ? (
+                      <QuizPlayer
+                        questions={JSON.parse(msg.content.replace("QUIZ_JSON:", ""))}
+                        onComplete={(score, total, wrongTopics) => {
+                          const wrong = wrongTopics.length > 0
+                            ? ` I got these wrong: ${wrongTopics.join("; ")}`
+                            : "";
+                          sendMessage(`I just finished the quiz. My score was ${score}/${total}.${wrong}`);
+                        }}
+                      />
+                    ) : (
+                      <div className="prose prose-sm max-w-none
+                        prose-headings:text-foreground prose-headings:font-semibold
+                        prose-strong:text-foreground prose-p:text-foreground
+                        prose-li:text-foreground
+                        prose-a:text-blue-600 prose-a:underline prose-a:font-medium
+                        prose-code:text-foreground prose-code:bg-muted prose-code:px-1 prose-code:rounded
+                        prose-pre:bg-muted prose-pre:border prose-pre:border-border">
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      </div>
+                    )
                   ) : (
-                    <div className="prose prose-invert prose-sm max-w-none
-                      prose-headings:text-purple-300 prose-headings:font-semibold
-                      prose-strong:text-white prose-code:text-purple-300
-                      prose-code:bg-gray-900 prose-code:px-1 prose-code:rounded
-                      prose-pre:bg-gray-900 prose-pre:border prose-pre:border-gray-700
-                      prose-li:text-gray-300 prose-p:text-gray-200">
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
-                    </div>
-                  )
-                ) : (
-                  msg.content
+                    msg.content
+                  )}
+                </div>
+                {msg.role === "user" && (
+                  <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-xs text-muted-foreground shrink-0 mt-1">
+                    U
+                  </div>
                 )}
               </div>
-              {msg.role === "user" && (
-                <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center text-xs shrink-0 mt-1">U</div>
-              )}
-            </div>
-          ))}
+            ))}
 
-          {loading && (
-            <div className="flex gap-3 justify-start">
-              <div className="w-7 h-7 rounded-full bg-purple-700 flex items-center justify-center text-xs shrink-0">AI</div>
-              <div className="bg-gray-800 px-4 py-3 rounded-2xl rounded-tl-sm">
-                <div className="flex gap-1">
-                  <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+            {loading && (
+              <div className="flex gap-3 justify-start">
+                <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-xs text-primary-foreground shrink-0">
+                  AI
+                </div>
+                <div className="bg-secondary px-4 py-3 rounded-2xl rounded-tl-sm">
+                  <div className="flex gap-1">
+                    <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-          <div ref={bottomRef} />
-        </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+        </ScrollArea>
 
         {/* Topic picker panel */}
         {activeAction && (
-          <div className="border-t border-gray-800 bg-gray-900 px-6 py-4">
+          <div className="border-t border-border bg-card px-6 py-4">
             <div className="max-w-3xl mx-auto space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs text-gray-400 font-medium">{activeAction.label} — choose a topic:</p>
-                <button onClick={() => setActiveAction(null)} className="text-gray-600 hover:text-gray-400 text-xs">✕ close</button>
+                <p className="text-xs text-muted-foreground font-medium">{activeAction.label} — choose a topic:</p>
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground" onClick={() => setActiveAction(null)}>
+                  ✕ close
+                </Button>
               </div>
 
-              {/* Suggestions */}
               <div className="flex flex-wrap gap-2">
                 {activeAction.suggestions.map((s) => (
-                  <button
+                  <Button
                     key={s}
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full text-xs h-7"
                     onClick={() => handleSuggestion(activeAction, s)}
-                    className="bg-gray-800 hover:bg-purple-800 border border-gray-700 hover:border-purple-600 text-gray-300 hover:text-white text-xs px-3 py-1.5 rounded-full transition-colors"
                   >
                     {s}
-                  </button>
+                  </Button>
                 ))}
               </div>
 
-              {/* Custom input */}
               <div className="flex gap-2">
-                <input
+                <Input
                   ref={customInputRef}
                   value={customTopic}
                   onChange={(e) => setCustomTopic(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleCustomSubmit(activeAction)}
                   placeholder={activeAction.placeholder}
-                  className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-sm outline-none focus:border-purple-500 transition-colors placeholder-gray-600"
+                  className="flex-1"
                 />
-                <button
+                <Button
                   onClick={() => handleCustomSubmit(activeAction)}
                   disabled={!customTopic.trim()}
-                  className="bg-purple-600 hover:bg-purple-500 disabled:opacity-40 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
                 >
                   Go →
-                </button>
+                </Button>
               </div>
             </div>
           </div>
         )}
 
         {/* Input */}
-        <div className="border-t border-gray-800 bg-gray-950 p-4">
+        <div className="border-t border-border bg-background p-4">
           <div className="flex gap-2 max-w-3xl mx-auto">
-            <input
+            <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
               placeholder="Ask about programming, request a quiz, review a GitHub repo..."
-              className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-500 transition-colors placeholder-gray-600"
+              className="flex-1 h-11"
             />
-            <button
+            <Button
               onClick={() => sendMessage()}
               disabled={loading || !input.trim()}
-              className="bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed px-5 py-3 rounded-xl text-sm font-medium transition-colors"
+              className="h-11 px-6"
             >
               Send
-            </button>
+            </Button>
           </div>
         </div>
       </main>

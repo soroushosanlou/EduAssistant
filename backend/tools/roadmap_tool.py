@@ -13,12 +13,13 @@ def _get_llm():
 
 
 @tool
-def roadmap_generator(goal: str, level: str = "beginner") -> str:
+def roadmap_generator(goal: str, level: str = "beginner", student_context: str = "") -> str:
     """Generate a personalized learning roadmap for a programming goal.
 
     Args:
         goal: The learning goal (e.g. 'Backend Developer', 'React Frontend', 'ML Engineer')
         level: Current student level - beginner, intermediate, or advanced
+        student_context: Summary of student profile, known technologies, and already studied topics
     """
     level_instructions = {
         "beginner": "Start from absolute basics. Include foundational concepts before frameworks.",
@@ -27,8 +28,10 @@ def roadmap_generator(goal: str, level: str = "beginner") -> str:
     }
     instruction = level_instructions.get(level, level_instructions["beginner"])
 
-    prompt = f"""Create a detailed learning roadmap for "{goal}" starting from {level} level.
+    context_section = f"\nStudent Profile:\n{student_context}\nSkip topics they already know. Build directly on their existing skills and technologies.\n" if student_context else ""
 
+    prompt = f"""Create a detailed learning roadmap for "{goal}" starting from {level} level.
+{context_section}
 Instructions: {instruction}
 
 Structure the roadmap as:
